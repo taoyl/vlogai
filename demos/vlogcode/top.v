@@ -53,4 +53,4 @@ TOP u_top ( /* vai-auto-inst */
 endmodule
 
 // vai-files  : ./macros.v, ./led.v
-// vai-incdirs: ../../..
+// vai-incdirs: ./submod
