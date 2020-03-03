@@ -202,6 +202,8 @@ def generate_declares(instances, windent=0, pindent=0):
     # Find out the max length of wire/port signals
     max_instp_len, max_slice_len = (0, 0)
     for inst in instances.values():
+        if not inst['port']:
+            continue
         len_list = [(len(v["instp"]), len(v["slice"])) for v in inst['port'].values()]
         instp_len, slice_len = tuple(map(max, list(zip(*len_list))))
         max_instp_len = instp_len if max_instp_len < instp_len else max_instp_len
