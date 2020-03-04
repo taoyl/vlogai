@@ -45,6 +45,10 @@ def parse_args(args):
                         help='Change instport naming using python regexp')
     group2.add_argument('--reset', action='store_true',
                         help='Reset parameter value and instport name to default')
+    group2.add_argument('--keep', action='store_true',
+                        help=('Keep all old auto declarations if corresponding directives not '
+                              'found. All old declarations are cleared by default. This option'
+                              ' is valid only with -d/--declare option'))
     return parser.parse_args(args)
 
 
