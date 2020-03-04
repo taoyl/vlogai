@@ -1,6 +1,7 @@
 # vim:fileencoding=utf-8:noet
 """ Vim Utils.
     Copyright (C) 2020 Yuliang Tao - All Rights Reserved.
+
     You may use, distribute and modify this code under the terms of the GNU General Public License
     as published by the Free Software Foundation, either version 3 of the License, or any later
     version.

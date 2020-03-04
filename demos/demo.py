@@ -27,7 +27,7 @@ def main():
     with open(f'{vlog_dir}/top.v', 'r') as f:
         vim_buf = f.readlines()
     
-    instances = vai.get_instances((f'{vlog_dir}/top.v', ), vim_buf)
+    instances, __, __ = vai.get_instances((f'{vlog_dir}/top.v', ), vim_buf)
     pprint.pprint(instances)
 
     inst = vai.VlogAutoInst((f'{vlog_dir}/macros.v', f'{vlog_dir}/led.v'), 'led')

@@ -1,6 +1,7 @@
 # vim:fileencoding=utf-8:noet
 """ Verilog Auto Instantiation.
     Copyright (C) 2020 Yuliang Tao - All Rights Reserved.
+
     You may use, distribute and modify this code under the terms of the GNU General Public License
     as published by the Free Software Foundation, either version 3 of the License, or any later
     version.
@@ -133,8 +134,14 @@ def get_instances(flist, vim_buf, inst_name=None):
     re_pat_semicolon = re.compile(r';')
     re_pat_port_type = re.compile(r'//([WP]?)([IO]+)')
 
-    inst_dict = {}
+    # Find the max and min line number for module port list
+    port_line_nums = [int(p.lineno) for p in ast.children()[0].children()[0].portlist.ports]
+    max_modport_ln = max(port_line_nums)
+    min_modport_ln = min(port_line_nums)
+
+    # Iterate all instances
     # Source->Description->ModuleDef->InstanceList->Instance
+    inst_dict = {}
     for mod_def in ast.children()[0].children()[0].children():
         if not isinstance(mod_def, InstanceList):
             continue
@@ -155,8 +162,8 @@ def get_instances(flist, vim_buf, inst_name=None):
                 mat = re_pat_port_type.search(vim_buf[line_num-1])
                 port_type = mat.group(1) if mat else ''
                 direction = mat.group(2) if mat else ''
-                port_dict.update({str(p.portname): dict(instp=instp_name, slice=slice_expr, type=port_type,
-                                      dir=direction)})
+                port_dict.update({str(p.portname): dict(instp=instp_name, slice=slice_expr,
+                                                        type=port_type, dir=direction)})
             port_ln = [int(p.lineno) for p in i.portlist]
             max_port_ln = max(port_ln) if port_ln else (i.lineno + 1)
             min_port_ln = min(port_ln) if port_ln else (i.lineno + 1)
@@ -190,6 +197,7 @@ def get_instances(flist, vim_buf, inst_name=None):
             indent = len(mat.group(1)) if mat else 0
 
             inst_dict.update({i.name: {
+                                        'parent_port_ln': (min_modport_ln, max_modport_ln),
                                         'mod': i.module,
                                         'begin_ln': i.lineno, 
                                         'end_ln': end_ln,
@@ -199,8 +207,14 @@ def get_instances(flist, vim_buf, inst_name=None):
     return inst_dict if inst_name is None else inst_dict.get(inst_name, None)
 
 
-def generate_declares(instances, windent=0, pindent=0):
+def generate_declares(instances, windent=0, pindent=0, precomma=True):
     """Generate wire and external port declaration for inst ports.
+
+    Args: 
+    :param dict instances: instance dict
+    :param int windent: indent for auto-wire declaration
+    :param int pindent: indent for auto-port declaration
+    :param bool precomma: whether adding prefix comma for auto-port declaration.
     """
 
     # Find out the max length of wire/port signals
@@ -250,10 +264,11 @@ def generate_declares(instances, windent=0, pindent=0):
     port_declare_code = None
     if port_dict:
         port_indent = ' ' * pindent
-        port_declare_code = f'{port_indent} /* vai-auto-port-begin */\n'
-        port_declare_code += f'{port_indent},'
+        port_declare_code = f'{port_indent}/* vai-auto-port-begin */\n{port_indent}'
+        port_declare_code += ',' if precomma else ''
         port_declare_code += f'\n{port_indent},'.join([x[0] for x in port_dict.values()])
-        port_declare_code += f'\n{port_indent} /* vai-auto-port-end */'
+        port_declare_code += '' if precomma else f'\n{port_indent},'
+        port_declare_code += f'\n{port_indent}/* vai-auto-port-end */'
 
     return (port_declare_code, len(port_dict), wire_declare_code, len(wire_dict))
 
@@ -453,4 +468,3 @@ class VlogAutoInst:
                  for v in self.port_dict.values() if v['type'] == 'P']
         code += f'\n{indent_lvl0},'.join(ports)
         return code
-
