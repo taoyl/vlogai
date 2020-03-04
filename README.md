@@ -1,15 +1,31 @@
 # vlogai
-Verilog Auto Instantiation
+A python package for verilog auto instantiation
+
+# Features
+
+  - Auto instantiation for verilog modules
+  - Support macros and paramaters with all verilog formats
+  - Update instantiations based on value changes of paramaters and macros
+  - Support directives for auto declaring wires and external ports with no 
+    deplicated declaraions
+  - Support instport changes using python regexp
+  - Support file and incdir search for finding module definitions
 
 
-# Requirements
+# Installation
+### Requirements
 This package requires Python 3.6 or later (3.7 is better) and pyverilog(>=1.2.0)(https://github.com/PyHDI/Pyverilog).
 
 ```pip install pyverilog```
 
+Note: Python 3.7 is better because it keeps the ordering of dict items when inserted.
 
-# Installation
+### Install with pip
+You can use the following to install vlogai package.
 ```pip install git+https://github.com/taoyl/vlogai.git```
+
+To upgrade vlogai, use the following command:
+```pip install --upgrade git+https://github.com/taoyl/vlogai.git```
 
 
 # Reference Usage:
