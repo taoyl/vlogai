@@ -30,6 +30,13 @@ from pyverilog.vparser.plyparser import ParseError
 from pyverilog.vparser.ast import InstanceList, ParamArg, Instance, PortArg
 
 
+AI_DIRECTIVE = 'vai-autoinst'
+AP_DIRECTIVE = 'vai-autoport'
+AW_DIRECTIVE = 'vai-autowire'
+INC_FILE_DIRECTIVE = 'vai-files'
+INC_DIR_DIRECTIVE = 'vai-incdirs'
+
+
 def parse_args(args):
     """Parse vim command argements.
     """
@@ -66,14 +73,14 @@ def grep_vim_buf(vim_buf, pattern):
 
 
 def find_declares_ln(vim_buf):
-    """Find the line number of auto-declare: vai-auto-wire and vai-auto-port.
+    """Find the line number of auto-declare: vai-autowire and vai-autoport.
     """
     
     re_pat_prespace = re.compile(r'^(\s*)')
-    re_pat_aws = re.compile(r'^\s*/\*\s*vai-auto-wire-begin\s*\*/')
-    re_pat_awe = re.compile(r'^\s*/\*\s*vai-auto-wire-end\s*\*/')
-    re_pat_aps = re.compile(r'^\s*/\*\s*vai-auto-port-begin\s*\*/')
-    re_pat_ape = re.compile(r'^\s*/\*\s*vai-auto-port-end\s*\*/')
+    re_pat_aws = re.compile(rf'^\s*/\*\s*{AW_DIRECTIVE}-begin\s*\*/')
+    re_pat_awe = re.compile(rf'^\s*/\*\s*{AW_DIRECTIVE}-end\s*\*/')
+    re_pat_aps = re.compile(rf'^\s*/\*\s*{AP_DIRECTIVE}-begin\s*\*/')
+    re_pat_ape = re.compile(rf'^\s*/\*\s*{AP_DIRECTIVE}-end\s*\*/')
     ap_begin_ln, ap_end_ln, aw_begin_ln, aw_end_ln = (0, 0, 0, 0)
     ap_indent, aw_indent = (0, 0)
     for i, line in enumerate(vim_buf):
@@ -99,8 +106,8 @@ def get_vai_files(vim_buf):
     """Get vai file list from vim buffer.
     """
 
-    vai_file_lines = grep_vim_buf(vim_buf, r'^\s*//\s*vai-files\s*:')
-    vai_dir_lines = grep_vim_buf(vim_buf, r'^\s*//\s*vai-incdirs\s*:')
+    vai_file_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{INC_FILE_DIRECTIVE}\s*:')
+    vai_dir_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{INC_DIR_DIRECTIVE}\s*:')
     vai_vlog_files = []
     for l in vai_file_lines:
         vlog_files = l.split(':')[-1].replace(' ', '').split(',')
@@ -172,17 +179,17 @@ def get_instances(flist, vim_buf, inst_name=None):
             max_port_ln = max(port_ln) if port_ln else (i.lineno + 1)
             min_port_ln = min(port_ln) if port_ln else (i.lineno + 1)
             # print(f'max={max_port_ln}, min={min_port_ln}')
-            # validate vai-auto-inst directive.
-            # vai-auto-inst directive should be between the start line and the min port line
+            # validate vai-autoinst directive.
+            # vai-autoinst directive should be between the start line and the min port line
             valid_vai_inst = False
-            re_pat_inst = re.compile(rf'{i.name}\s*\(\s*/\*\s*vai-auto-inst\s*\*/')
+            re_pat_inst = re.compile(rf'{i.name}\s*\(\s*/\*\s*{AI_DIRECTIVE}\s*\*/')
             # minus 1 because vim buffer index starts from 1
             for line in vim_buf[(i.lineno-1):(min_port_ln-1)]:
                 if re_pat_cmt.search(line):
                     continue
                 if re_pat_inst.search(line):
                     valid_vai_inst = True
-            # stop if current instance doesn't have vai-auto-inst directive
+            # stop if current instance doesn't have vai-autoinst directive
             if not valid_vai_inst:
                 continue
 
@@ -216,9 +223,9 @@ def generate_declares(instances, windent=0, pindent=0, precomma=True):
 
     Args: 
     :param dict instances: instance dict
-    :param int windent: indent for auto-wire declaration
-    :param int pindent: indent for auto-port declaration
-    :param bool precomma: whether adding prefix comma for auto-port declaration.
+    :param int windent: indent for autowire declaration
+    :param int pindent: indent for autoport declaration
+    :param bool precomma: whether adding prefix comma for autoport declaration.
     """
 
     # Find out the max length of wire/port signals
@@ -259,20 +266,20 @@ def generate_declares(instances, windent=0, pindent=0, precomma=True):
     wire_declare_code = None
     if wire_dict:
         wire_indent = ' ' * windent
-        wire_declare_code = f'{wire_indent}/* vai-auto-wire-begin */\n'
+        wire_declare_code = f'{wire_indent}/* {AW_DIRECTIVE}-begin */\n'
         wire_declare_code += f'{wire_indent}'
         wire_declare_code += f'\n{wire_indent}'.join([x[0] for x in wire_dict.values()])
-        wire_declare_code += f'\n{wire_indent}/* vai-auto-wire-end */'
+        wire_declare_code += f'\n{wire_indent}/* {AW_DIRECTIVE}-end */'
 
     # port declarations 
     port_declare_code = None
     if port_dict:
         port_indent = ' ' * pindent
-        port_declare_code = f'{port_indent}/* vai-auto-port-begin */\n{port_indent}'
+        port_declare_code = f'{port_indent}/* {AP_DIRECTIVE}-begin */\n{port_indent}'
         port_declare_code += ',' if precomma else ''
         port_declare_code += f'\n{port_indent},'.join([x[0] for x in port_dict.values()])
         port_declare_code += '' if precomma else f'\n{port_indent},'
-        port_declare_code += f'\n{port_indent}/* vai-auto-port-end */'
+        port_declare_code += f'\n{port_indent}/* {AP_DIRECTIVE}-end */'
 
     return (port_declare_code, len(port_dict), wire_declare_code, len(wire_dict))
 
@@ -430,7 +437,7 @@ class VlogAutoInst:
             code += f'\n{indent_lvl1},.'.join(param_list)
             code += f'\n{indent_lvl0}) '
 
-        code += f'{inst_name} ( /* vai-auto-inst */\n{indent_lvl1} .'
+        code += f'{inst_name} ( /* {AI_DIRECTIVE} */\n{indent_lvl1} .'
         # find the max length of port length
         len_list = [(len(k), len(f'{v["instp"]}{v["slice"]}')) for k, v in self.port_dict.items()]
         max_k_len, max_v_len = tuple(map(max, list(zip(*len_list))))
