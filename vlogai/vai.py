@@ -125,13 +125,12 @@ def get_instances(flist, vim_buf, inst_name=None):
     Returns: instance dict with parameters and ports.
     """
 
-    inst_dict = {}
     # parse verilog files
     try:
         ast, __ = parse(flist)
     except ParseError as pe:
         print(pe)
-        return inst_dict
+        return None
 
     # precimpiled regexp patterns
     re_pat_cmt = re.compile(r'^\s*//')
@@ -146,6 +145,7 @@ def get_instances(flist, vim_buf, inst_name=None):
 
     # Iterate all instances
     # Source->Description->ModuleDef->InstanceList->Instance
+    inst_dict = {}
     for mod_def in ast.children()[0].children()[0].children():
         if not isinstance(mod_def, InstanceList):
             continue
