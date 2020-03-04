@@ -1,52 +1,53 @@
 module top(
-     input clk
-
-    // comm
-         /* vai-auto-port-begin */
-        ,input          iCLK
-        ,input          iRST
-        ,input  [247:0] my_led_addr2
-        ,inout          my_led_test1
-         /* vai-auto-port-end */
-    //end
+     input clk,
+     input rst
+             /* vai-auto-port-begin */
+             ,input          CLK
+             ,input          RST_X
+             ,input  [7:0]   IN
+             ,output [7:0]   OUT
+             /* vai-auto-port-end */
 
 );
 
 wire xxx_a;
  // start
   /* vai-auto-wire-begin */
-  wire [15:0]  my_led_din         ;
-  wire [3:0]   my_led_dinx        ;
-  wire [7:0]   my_led_LED         ;
-  wire [63:0]  my_led_addr1       ;
-  wire [7:0]   my_led_strb        ;
-  wire         prefix_RST_X_suffix;
+  wire         CLK  ;
+  wire         RST  ;
+  wire [9:0]   din  ;
+  wire [3:0]   dinx ;
+  wire [7:0]   LED  ;
+  wire [39:0]  addr1;
+  wire [394:0] addr2;
+  wire [3:0]   strb ;
+  wire         test1;
   /* vai-auto-wire-end */
   //end
 
 
     // example
     led #(
-         .STEP  (16   )
-        ,.LEN   (8'h1f)
+         .STEP  (10   )
+        ,.LEN   (8'h4f)
         ,.WIDTH (4'h8 )
     ) u_my_led ( /* vai-auto-inst */
-         .CLK   (iCLK               ) //PI
-        ,.RST   (iRST               ) //PI
-        ,.din   (my_led_din[15:0]   ) //WI
-        ,.dinx  (my_led_dinx[3:0]   ) //WO
-        ,.LED   (my_led_LED[7:0]    ) //WO
-        ,.addr1 (my_led_addr1[63:0] ) //WI
-        ,.addr2 (my_led_addr2[247:0]) //PI
-        ,.strb  (my_led_strb[3:0]   ) //WO
-        ,.test1 (my_led_test1       ) //PIO
+         .CLK   (prefix_CLK         ) //WI
+        ,.RST   (prefix_RST         ) //WI
+        ,.din   (prefix_din[9:0]    ) //WI
+        ,.dinx  (prefix_dinx[3:0]   ) //WO
+        ,.LED   (prefix_LED[7:0]    ) //WO
+        ,.addr1 (prefix_addr1[39:0] ) //WI
+        ,.addr2 (prefix_addr2[394:0]) //WI
+        ,.strb  (prefix_strb[3:0]   ) //WO
+        ,.test1 (prefix_test1       ) //WIO
     ); // end of u_my_led
 
 TOP u_top ( /* vai-auto-inst */
-     .CLK   (iCLK                  ) //PI
-    ,.RST_X (prefix_RST_X_suffix   ) //WI
-    ,.IN    (my_led_strb[7:0]      ) //WI
-    ,.OUT   (my_led_addr2[7:0]) //PO
+     .CLK   (CLK_suffix     ) //PI
+    ,.RST_X (RST_X_suffix   ) //PI
+    ,.IN    (IN_suffix[7:0] ) //PI
+    ,.OUT   (OUT_suffix[7:0]) //PO
 ); // end of u_top
 
  
