@@ -7,7 +7,7 @@ def read(filename):
 
 setup(name='vlogai',
       version=read('vlogai/VERSION').splitlines()[0],
-      description=read('README.md',
+      description=read('README.md'),
       long_description=read('README.md'),
       long_description_content_type='text/markdown',
       keywords='Verilog, Auto Instantiation, Vim Plugin, Pyverilog',
