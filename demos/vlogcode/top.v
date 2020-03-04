@@ -51,5 +51,5 @@ module top(
  
 endmodule
 
-// vai-files  : ./macros.v, ./led.v
+// vai-incfiles: ./macros.v, ./led.v
 // vai-incdirs: ./submod
