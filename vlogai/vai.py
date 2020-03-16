@@ -139,8 +139,8 @@ def get_instances(flist, vim_buf, inst_name=None):
 
     # Find the max and min line number for module port list
     port_line_nums = [int(p.lineno) for p in ast.children()[0].children()[0].portlist.ports]
-    max_modport_ln = max(port_line_nums)
-    min_modport_ln = min(port_line_nums)
+    max_modport_ln = max(port_line_nums) if port_line_nums else 0
+    min_modport_ln = min(port_line_nums) if port_line_nums else 0
 
     # Iterate all instances
     # Source->Description->ModuleDef->InstanceList->Instance
