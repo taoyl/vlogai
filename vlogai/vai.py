@@ -21,7 +21,6 @@ import pprint
 import re
 import sys
 from functools import reduce
-import pyverilog.utils.version
 from pyverilog.utils.verror import DefinitionError
 from pyverilog.dataflow.dataflow_analyzer import VerilogDataflowAnalyzer
 from pyverilog.dataflow.dataflow import DFIntConst, DFOperator
