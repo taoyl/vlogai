@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# pyverilog parser generated files
+parser.out
+parsetab.py
