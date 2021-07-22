@@ -16,21 +16,29 @@
 import os
 import sys
 import pprint
+from pathlib import Path
 # The following line can be removed after vlogai is installed.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import vlogai.vai as vai
 
 def main():
-    vlog_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)) + '/vlogcode')
+    vlog_dir = Path(os.path.dirname(os.path.abspath(__file__))) / 'vlogcode'
+    top_file = vlog_dir / 'top.v'
+    print(top_file)
 
     vim_buf = None
-    with open(f'{vlog_dir}/top.v', 'r') as f:
+    with open(top_file, 'r') as f:
         vim_buf = f.readlines()
     
-    instances = vai.get_instances((f'{vlog_dir}/top.v', ), vim_buf)
+    instances = vai.get_instances((top_file, ), vim_buf)
     pprint.pprint(instances)
 
-    inst = vai.VlogAutoInst((f'{vlog_dir}/macros.v', f'{vlog_dir}/led.v'), 'led')
+    vlog_files = [vlog_dir / f for f in vai.get_vai_files(vim_buf, parent=vlog_dir)]
+    # vlog_files = vai.get_vai_files(vim_buf)
+    print(f"flist: {vlog_files}")
+
+    # inst = vai.VlogAutoInst((vlog_dir / 'macros.v', vlog_dir / 'led.v'), 'led')
+    inst = vai.VlogAutoInst(vlog_files, 'led')
     print(inst.generate_code('u_led', 2))
     # # update params
     # new_params = {'STEP': '4', 'LEN': "8'hf", 'WIDTH': "4'hc"}
@@ -43,7 +51,6 @@ def main():
     inst.update(None, None, regexp)
     print(inst.generate_code('u_led', 2))
 
-    vai.get_vai_files(vim_buf)
 
 
 if __name__ == '__main__':

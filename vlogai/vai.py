@@ -24,8 +24,7 @@ from functools import reduce
 from pyverilog.utils.verror import DefinitionError
 from pyverilog.dataflow.dataflow_analyzer import VerilogDataflowAnalyzer
 from pyverilog.dataflow.dataflow import DFIntConst, DFOperator
-from pyverilog.vparser.parser import parse
-from pyverilog.vparser.plyparser import ParseError
+from pyverilog.vparser.parser import parse, ParseError
 from pyverilog.vparser.ast import InstanceList, ParamArg, Instance, PortArg
 from vlogai.directive import directives
 
@@ -93,28 +92,90 @@ def find_declares_ln(vim_buf):
     return {'ap': (ap_begin_ln, ap_end_ln, ap_indent),
             'aw': (aw_begin_ln, aw_end_ln, aw_indent)}
 
+def list_dedup_inorder(list_):
+    return sorted(set(list_), key=lambda x: list_.index(x))
 
-def get_vai_files(vim_buf):
-    """Get vai file list from vim buffer.
+def validate_file(files, parent=''):
+    valid_files = []
+    for f in files:
+        abs_path = os.path.abspath(f)
+        if os.path.exists(abs_path):
+            valid_files.append(abs_path)
+            continue
+        abs_path_full = os.path.abspath(os.path.join(parent, f))
+        if os.path.exists(abs_path_full):
+            valid_files.append(abs_path_full)
+            continue
+        print(f"{f} doesn't exist in both parent dir:{parent} and cwd:{os.getcwd()}")
+    return valid_files
+
+def find_files_from_dirs(dir_list, glob_pats=('*'), parent=''):
+    """Mimic find command in linux to find files with glob patterns from specific dirs, e.g,
+    // vai-incdirs: ./submod, ./interface
     """
 
+    all_matcheds = [glob.glob(os.path.join(d, rf'{pat}')) for d in dir_list for pat in glob_pats]
+    # use set to remove duplication
+    all_files = [y for x in all_matcheds for y in x]
+    return validate_file(list_dedup_inorder(all_files), parent)
+
+def find_files_from_lines(text_lines, parent=''):
+    """Find files in a text line, e.g.,
+    // vai-incfiles: ./macros.v, ./led.v
+    """
+
+    all_files = [f for l in text_lines for f in l.split(':')[-1].replace(' ', '').split(',')]
+    return validate_file(list_dedup_inorder(all_files), parent)
+
+def find_files_from_flist(flist_fnames, grep_pats=('.',), parent=''):
+    """Find files in filelists.
+    """
+
+    all_files = []
+    for flist in flist_fnames:
+        if not os.path.exists(flist):
+            print(f"flist {flist} doesn't exist in {os.getcwd()}")
+            continue
+        with open(flist) as fl:
+            all_files += [mat for pat in grep_pats for mat in grep_vim_buf(fl, rf'{pat}')]
+    return validate_file(list_dedup_inorder(all_files), parent)
+
+def get_vai_files(vim_buf, parent=''):
+    """Get vai design file list from vim buffer.
+    """
+
+    # design files
     vai_file_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{directives["INCFILE"]}\s*:')
     vai_dir_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{directives["INCDIR"]}\s*:')
-    vai_vlog_files = []
-    for l in vai_file_lines:
-        vlog_files = l.split(':')[-1].replace(' ', '').split(',')
-        vai_vlog_files += [x for x in vlog_files if os.path.exists(x)]
-    # get all *.v/*.sv files in incdirs
-    for l in vai_dir_lines:
-        dirs = l.split(':')[-1].replace(' ', '').split(',') 
-        for d in dirs:
-            vai_vlog_files += glob.glob(os.path.join(d, '*.v'))
-            vai_vlog_files += glob.glob(os.path.join(d, '*.sv'))
+    vai_flist_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{directives["INCFLIST"]}\s*:')
+    # get all *.v/*.sv files, including files in incdirs and flist
+    vai_vlog_files = find_files_from_lines(vai_file_lines, parent)
+    all_dirs = find_files_from_lines(vai_dir_lines, parent)
+    vai_vlog_files += find_files_from_dirs(dir_list=all_dirs, glob_pats=('*.v', '*.sv'), parent=parent)
+    all_flists = find_files_from_lines(vai_flist_lines, parent)
+    vai_vlog_files += find_files_from_flist(flist_fnames=all_flists, grep_pats=('\.v$', '\.sv$'), parent=parent)
+
     return tuple(vai_vlog_files)
 
+def get_vai_if_files(vim_buf, parent=''):
+    """Get vai interface file list from vim buffer.
+    """
+
+    # interface files
+    vai_intf_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{directives["INCIF"]}\s*:')
+    vai_intfdir_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{directives["INCIFDIR"]}\s*:')
+    vai_intflist_lines = grep_vim_buf(vim_buf, rf'^\s*//\s*{directives["INCIFFLIST"]}\s*:')
+    # get all *.if.sv files, including files in incifdirs and flist
+    vai_intf_files = find_files_from_lines(vai_intf_lines, parent)
+    all_dirs = find_files_from_lines(vai_intfdir_lines, parent)
+    vai_intf_files += find_files_from_dirs(dir_list=all_dirs, glob_pats=('*.if.sv', ), parent=parent)
+    all_flists = find_files_from_lines(vai_intflist_lines, parent)
+    vai_intf_files += find_files_from_flist(flist_fnames=all_flists, grep_pats=('\.if\.sv$', ), parent=parent)
+
+    return tuple(vai_intf_files)
 
 def get_instances(flist, vim_buf, inst_name=None):
-    """Get instance information in flie list.
+    """Get instance information from files in filelist.
 
     Args:
     :param tuple flist: verilog file list.
@@ -209,7 +270,6 @@ def get_instances(flist, vim_buf, inst_name=None):
                                         'port': port_dict }})
     return inst_dict if inst_name is None else inst_dict.get(inst_name, None)
 
-
 def generate_declares(instances, windent=0, pindent=0, precomma=True):
     """Generate wire and external port declaration for inst ports.
 
@@ -274,6 +334,79 @@ def generate_declares(instances, windent=0, pindent=0, precomma=True):
         port_declare_code += f'\n{port_indent}/* {directives["AP"]}-end */'
 
     return (port_declare_code, len(port_dict), wire_declare_code, len(wire_dict))
+
+
+def get_intf_portlist(text):
+    """Get port list of a module interface definition.
+    """
+    port_dec_list = text.replace(r'\n', '').split(',')
+    re_pat_port_dec = re.compile(r'([\w\.]+)\s+(?:\[([^\]]+)\])?\s*(\w+)')
+    port_list = []
+    for p in port_dec_list:
+        if mat := re_pat_port_dec.search(p):
+            port_list.append([mat.group(3), mat.group(2), mat.group(1)])
+    return port_list
+
+def parse_sv_modport(modport_list):
+    modports = {}
+    for name, ports in modport_list:
+        modports.update({name: get_modport_portlist(ports)})
+    return modports
+
+def parse_sv_interface(flist):
+    re_pat_intf_def = r'\s*interface\s+(\w+)\s*\((.*?)\).*?endinterface'
+    re_pat_comment = re.compile(r'/[/\*].*$')
+
+    intf_defs = {}
+    for fname in flist:
+        with open(fname) as intf_file:
+            all_lines = ''
+            for line in intf_file:
+                # remove blanks at head and tail, and comment
+                line = re_pat_comment.sub(r'', line)
+                text = line.rstrip(' ').lstrip(' ')
+                if text != '':
+                    all_lines += ' ' + text
+            # interface definition
+            if intf_def_list := re.findall(re_pat_intf_def, all_lines, re.S):
+                for intf_name, ports_text in intf_def_list:
+                    # find all variables in interface
+                    intf_port_list = get_intf_portlist(ports_text)
+                    intf_defs.update({intf_name: intf_port_list})
+    return intf_defs
+
+def expand_inst_ports(instances, inst_name, intf_defs, port_defs):
+    if inst_name not in instances or instances[inst_name]['mod'] not in intf_defs:
+        return
+
+    used_def_intfs = {x[0]: x[2] for x in intf_defs[instances[inst_name]['mod']]}
+    expanded_intf_ports = recursive_expand_intf(intf_defs, instances[inst_name]['mod'])
+    new_inst_ports = {}
+    for k, v in instances[inst_name]['port'].items():
+        # an interface port, expand it
+        if k not in port_defs and k in used_def_intfs.keys():
+            for port in expanded_intf_ports:
+                if port.startswith(k) and port in port_defs:
+                    new_inst_ports[port] = {'dir': port_defs[port]['dir'], 
+                        'instp': f"{v['instp']}_{port.lstrip(k)}",
+                        'slice': port_defs[port]['slice'],
+                        'type': v['type']}
+    # update
+    instances[inst_name]['port'].update(new_inst_ports)
+ 
+
+def recursive_expand_intf(intf_defs, mod):
+    if mod not in intf_defs:
+        return []
+
+    intf_port_list = []
+    for instp, _, intf in intf_defs[mod]:
+        if intf not in ('input', 'output'):
+            intf_port_list += [f'{instp}_{x}' for x in recursive_expand_intf(intf_defs, intf)]
+        else:
+            intf_port_list.append(instp)
+    return intf_port_list
+
 
 
 class VlogAutoInst:
@@ -396,20 +529,18 @@ class VlogAutoInst:
             # update port width
             self.port_dict = self._get_ports()
 
-        # not necessary to update port dict if both port_dict and port_regexp are empty
-        if not port_dict and not port_regexp:
-            return
-
         # update instport name according to regexp and user's manual changes.
-        sel_port_dict = port_dict if port_dict else self.port_dict
+        if port_dict:
+            for k, v in self.port_dict.items():
+                if k in port_dict:
+					# only need to update instp and type
+                    self.port_dict[k]['type'] = port_dict[k]['type']
+                    self.port_dict[k]['instp'] = port_dict[k]['instp']
         if port_regexp:
+			# apply regexp on instp
             re_pat = re.compile(rf'{port_regexp[0]}')
-            for k, v in sel_port_dict.items():
-                sel_port_dict[k]['instp'] = re_pat.sub(rf'{port_regexp[1]}', v['instp'])
-        for k, v in sel_port_dict.items():
-            if k in self.port_dict:
-                self.port_dict[k]['instp'] = v['instp']
-                self.port_dict[k]['type'] = v['type']
+            for k, v in self.port_dict.items():
+                self.port_dict[k]['instp'] = re_pat.sub(rf'{port_regexp[1]}', v['instp'])
 
     def generate_code(self, inst_name, indent=0):
         """Generate instantiation code.
