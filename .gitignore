@@ -131,3 +131,7 @@ dmypy.json
 # pyverilog parser generated files
 parser.out
 parsetab.py
+.DS_Store
+
+# vim backup
+.*.swp
