@@ -6,10 +6,11 @@ A python package for verilog auto instantiation
   - Auto instantiation for verilog modules
   - Support macros and paramaters with all verilog formats
   - Update instantiations based on value changes of paramaters and macros
-  - Support directives for auto declaring wires and external ports with no 
-    deplicated declaraions
+  - Support directives for auto declaring wires and external ports without duplicated declaraions
   - Support instport changes using python regexp
-  - Support file and incdir search for finding module definitions
+  - Support individual file, file list and incdir search for finding module definitions
+  - Support systemverilog interface bundle for instantiations
+  - Support individual file, file list and incdir search for expanding interface bundles.
 
 
 # Installation
