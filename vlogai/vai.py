@@ -376,14 +376,14 @@ def parse_sv_interface(flist):
                 intf_defs.update({intf_name: intf_port_list})
     return intf_defs
 
-def expand_inst_ports(instances, inst_name, intf_defs, port_defs):
-    if inst_name not in instances or instances[inst_name]['mod'] not in intf_defs:
+def expand_inst_ports(inst, intf_defs, port_defs):
+    if inst['mod'] not in intf_defs:
         return
 
-    used_def_intfs = {x[0]: x[2] for x in intf_defs[instances[inst_name]['mod']]}
-    expanded_intf_ports = recursive_expand_intf(intf_defs, instances[inst_name]['mod'])
+    used_def_intfs = {x[0]: x[2] for x in intf_defs[inst['mod']]}
+    expanded_intf_ports = recursive_expand_intf(intf_defs, inst['mod'])
     new_inst_ports = {}
-    for k, v in instances[inst_name]['port'].items():
+    for k, v in inst['port'].items():
         # an interface port, expand it
         if k not in port_defs and k in used_def_intfs.keys():
             for port in expanded_intf_ports:
@@ -393,7 +393,7 @@ def expand_inst_ports(instances, inst_name, intf_defs, port_defs):
                         'slice': port_defs[port]['slice'],
                         'type': v['type']}
     # update
-    instances[inst_name]['port'].update(new_inst_ports)
+    inst['port'].update(new_inst_ports)
  
 
 def recursive_expand_intf(intf_defs, mod):

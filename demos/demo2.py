@@ -45,7 +45,7 @@ def main():
     # pprint.pprint(intf_defs)
 
     # expand interface ports
-    vai.expand_inst_ports(instances, 'u_example_mod', intf_defs, inst.port_dict)
+    vai.expand_inst_ports(instances['u_example_mod'], intf_defs, inst.port_dict)
     # pprint.pprint(instances)
     
 
