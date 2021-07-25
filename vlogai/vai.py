@@ -344,7 +344,7 @@ def get_intf_portlist(text):
     port_list = []
     for p in port_dec_list:
         mat = re_pat_port_dec.search(p)
-	if mat:
+        if mat:
             port_list.append([mat.group(3), mat.group(2), mat.group(1)])
     return port_list
 
@@ -370,10 +370,10 @@ def parse_sv_interface(flist):
                     all_lines += ' ' + text
             # interface definition
             intf_def_list = re.findall(re_pat_intf_def, all_lines, re.S)
-	    for intf_name, ports_text in intf_def_list:
-		# find all variables in interface
-		intf_port_list = get_intf_portlist(ports_text)
-                    intf_defs.update({intf_name: intf_port_list})
+            for intf_name, ports_text in intf_def_list:
+                # find all variables in interface
+                intf_port_list = get_intf_portlist(ports_text)
+                intf_defs.update({intf_name: intf_port_list})
     return intf_defs
 
 def expand_inst_ports(instances, inst_name, intf_defs, port_defs):
