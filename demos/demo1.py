@@ -30,26 +30,26 @@ def main():
     with open(top_file, 'r') as f:
         vim_buf = f.readlines()
     
-    instances = vai.get_instances((top_file, ), vim_buf)
+    instances = vai.get_instances((top_file, ), vim_buf, search_dir=vlog_dir)
     pprint.pprint(instances)
 
-    vlog_files = [vlog_dir / f for f in vai.get_vai_files(vim_buf, parent=vlog_dir)]
-    # vlog_files = vai.get_vai_files(vim_buf)
-    print(f"flist: {vlog_files}")
+    # vlog_files = [vlog_dir / f for f in vai.get_vai_files(vim_buf, parent=vlog_dir)]
+    # # vlog_files = vai.get_vai_files(vim_buf)
+    # print(f"flist: {vlog_files}")
 
-    # inst = vai.VlogAutoInst((vlog_dir / 'macros.v', vlog_dir / 'led.v'), 'led')
-    inst = vai.VlogAutoInst(vlog_files, 'led')
-    print(inst.generate_code('u_led', 2))
-    # # update params
-    # new_params = {'STEP': '4', 'LEN': "8'hf", 'WIDTH': "4'hc"}
-    # new_ports = {'din': 'led_din', 'addr1': 'led_addr1'}
-    regexp = (r'^', r'u_LED_')
-    inst.update(instances['u_my_led']['param'], instances['u_my_led']['port'], regexp)
-    print(inst.generate_code('u_led', 2))
+    # # inst = vai.VlogAutoInst((vlog_dir / 'macros.v', vlog_dir / 'led.v'), 'led')
+    # inst = vai.VlogAutoInst(vlog_files, 'led')
+    # print(inst.generate_code('u_led', 2))
+    # # # update params
+    # # new_params = {'STEP': '4', 'LEN': "8'hf", 'WIDTH': "4'hc"}
+    # # new_ports = {'din': 'led_din', 'addr1': 'led_addr1'}
+    # regexp = (r'^', r'u_LED_')
+    # inst.update(instances['u_my_led']['param'], instances['u_my_led']['port'], regexp)
+    # print(inst.generate_code('u_led', 2))
 
-    inst.reset()
-    inst.update(None, None, regexp)
-    print(inst.generate_code('u_led', 2))
+    # inst.reset()
+    # inst.update(None, None, regexp)
+    # print(inst.generate_code('u_led', 2))
 
 
 

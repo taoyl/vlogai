@@ -25,7 +25,8 @@ from pyverilog.utils.verror import DefinitionError
 from pyverilog.dataflow.dataflow_analyzer import VerilogDataflowAnalyzer
 from pyverilog.dataflow.dataflow import DFIntConst, DFOperator
 from pyverilog.vparser.parser import parse, ParseError
-from pyverilog.vparser.ast import InstanceList, ParamArg, Instance, PortArg
+from pyverilog.vparser.ast import InstanceList, ParamArg, Instance, PortArg, Output
+from pyverilog.vparser.ast import IntConst, Minus, Plus, Times, Divide, Srl, Sll
 from vlogai.directive import directives
 
 def parse_args(args):
@@ -174,7 +175,7 @@ def get_vai_if_files(vim_buf, parent=''):
 
     return tuple(vai_intf_files)
 
-def get_instances(flist, vim_buf, inst_name=None):
+def get_instances(flist, vim_buf, inst_name=None, search_dir=''):
     """Get instance information from files in filelist.
 
     Args:
@@ -188,6 +189,7 @@ def get_instances(flist, vim_buf, inst_name=None):
     # parse verilog files
     try:
         ast, __ = parse(flist)
+        print(ast.show())
     except ParseError as pe:
         print(pe)
         return None
@@ -202,6 +204,30 @@ def get_instances(flist, vim_buf, inst_name=None):
     port_line_nums = [int(p.lineno) for p in ast.children()[0].children()[0].portlist.ports]
     max_modport_ln = max(port_line_nums) if port_line_nums else 0
     min_modport_ln = min(port_line_nums) if port_line_nums else 0
+
+    # get ports of current top module
+    # top_mod = ast.children()[0].children()[0].name
+    # print(top_mod)
+    # flist = flist + get_vai_files(vim_buf, parent=search_dir)
+    # inst = VlogAutoInst(flist, top_mod)
+    # pprint.pprint(inst.port_dict)
+    # pprint.pprint(inst.param_dict)
+
+    # out_port_dict = {}
+    # max_modport_ln, min_modport_ln = (0, 99999999)
+    # print(ast.children()[0].children()[0].portlist.ports)
+    # for p in ast.children()[0].children()[0].portlist.ports:
+    #     max_modport_ln = p.lineno if p.lineno > max_modport_ln else max_modport_ln
+    #     min_modport_ln = p.lineno if p.lineno < min_modport_ln else min_modport_ln
+    #     print(f'attr_names={p.attr_names}, first={p.first}, second={p.second}, childen={p.children()}')
+    #     for c in p.children():
+    #         print(f'attr_names={c.attr_names}, dimensions={c.dimensions}, name={c.name}, width={c.width}, signed={c.signed}, childen={c.children()}')
+    #         if c.width is not None:
+    #             print(f'attr_names={c.width.attr_names}, msb={c.width.msb}, lsb={c.width.lsb}, childen={c.width.children()}')
+    #             print(dir(c.width.msb))
+    #             print(type(c.width.msb))
+    #             # print(f'attr_names={c.width.msb.attr_names}, left={c.width.msb.left}, right={c.width.msb.right}, childen={c.width.msb.children()}')
+    #             print(f'attr_names={c.width.msb.attr_names}, childen={c.width.msb.children()}')
 
     # Iterate all instances
     # Source->Description->ModuleDef->InstanceList->Instance
@@ -424,6 +450,7 @@ class VlogAutoInst:
         self.param_dict = None
         self.port_dict = None
         self.analyzer = VerilogDataflowAnalyzer(flist, top_mod)
+        # print(dir(self.analyzer))
         self.error = 0
         try:
             self.analyzer.generate()
@@ -477,6 +504,12 @@ class VlogAutoInst:
     def _get_params(self):
         param_list = []
         for k, v in self.analyzer.getTerms().items():
+            # getTerms() returns all hierarchical elements. however we only need the ones in the 
+            #first-level scope. So filter all elements with hierarchical level greater than 2
+            term_full_hier = str(k).split('.')
+            if len(term_full_hier) > 2:
+                continue
+            # Filter parameters
             if 'Parameter' in v.termtype:
                 param_list.append(v.name)
         return self._get_param_value(param_list)
@@ -484,6 +517,12 @@ class VlogAutoInst:
     def _get_ports(self):
         port_dict = {}
         for k, v in self.analyzer.getTerms().items():
+            # getTerms() returns all hierarchical elements. however we only need the ones in the 
+            #first-level scope. So filter all elements with hierarchical level greater than 2
+            term_full_hier = str(k).split('.')
+            if len(term_full_hier) > 2:
+                continue
+            # Filter ports
             port_dir = list({'Input', 'Output', 'Inout'} & v.termtype)
             if port_dir:
                 msb_v, lsb_v = (None, None)
@@ -534,11 +573,11 @@ class VlogAutoInst:
         if port_dict:
             for k, v in self.port_dict.items():
                 if k in port_dict:
-					# only need to update instp and type
+                    # only need to update instp and type
                     self.port_dict[k]['type'] = port_dict[k]['type']
                     self.port_dict[k]['instp'] = port_dict[k]['instp']
         if port_regexp:
-			# apply regexp on instp
+            # apply regexp on instp
             re_pat = re.compile(rf'{port_regexp[0]}')
             for k, v in self.port_dict.items():
                 self.port_dict[k]['instp'] = re_pat.sub(rf'{port_regexp[1]}', v['instp'])
